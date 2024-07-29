@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EntreprelanGlobeApp</title>
+  <!-- Styles -->
+  <style>
+  #chartdiv {
+    width: 100%;
+    height: 500px;
+    max-width: 100%;
+    position: relative;
+  }
+
+  #info {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    display: none; /* Initially hidden */
+  }
+
+  #spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  </style>
+
+  <!-- Resources -->
+  <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+  <script src="https://cdn.amcharts.com/lib/5/map.js"></script>
+  <script src="https://cdn.amcharts.com/lib/5/geodata/worldLow.js"></script>
+  <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+</head>
+<body>
+  <!-- Chart code -->
+  <script>
+  am5.ready(function() {
+    // Create root element
+    var root = am5.Root.new("chartdiv");
+
+    // Set themes
+    root.setThemes([
+      am5themes_Animated.new(root)
+    ]);
+
+    // Create the map chart
+    var chart = root.container.children.push(am5map.MapChart.new(root, {
+      panX: "rotateX",
+      panY: "rotateY",
+      projection: am5map.geoOrthographic(),
+      paddingBottom: 20,
+      paddingTop: 20,
+      paddingLeft: 20,
+      paddingRight: 20
+    }));
+
+    // Create main polygon series for countries
+    var polygonSeries = chart.series.push(am5map.MapPolygonSeries.new(root, {
+      geoJSON: am5geodata_worldLow
+    }));
+
+    polygonSeries.mapPolygons.template.setAll({
+      tooltipText: "{name}",
+      toggleKey: "active",
+      interactive: true
+    });
+
+    polygonSeries.mapPolygons.template.states.create("hover", {
+      fill: root.interfaceColors.get("primaryButtonHover")
+    });
+
+    // Create series for background fill
+    var backgroundSeries = chart.series.push(am5map.MapPolygonSeries.new(root, {}));
+    backgroundSeries.mapPolygons.template.setAll({
+      fill: root.interfaceColors.get("alternativeBackground"),
+      fillOpacity: 0.1,
+      strokeOpacity: 0
+    });
+    backgroundSeries.data.push({
+      geometry: am5map.getGeoRectangle(90, 180, -90, -180)
+    });
+
+    // Create graticule series
+    var graticuleSeries = chart.series.push(am5map.GraticuleSeries.new(root, {}));
+    graticuleSeries.mapLines.template.setAll({ strokeOpacity: 0.1, stroke: root.interfaceColors.get("alternativeBackground") });
+
+    // Rotate animation
+    chart.animate({
+      key: "rotationX",
+      from: 0,
+      to: 360,
+      duration: 30000,
+      loops: Infinity
+    });
+
+    // Make stuff animate on load
+    chart.appear(1000, 100);
+
+    // Add hover event to get AI-generated business news
+    polygonSeries.mapPolygons.template.events.on("pointerover", function(ev) {
+      var countryName = ev.target.dataItem.dataContext.name;
+      var infoDiv = document.getElementById('info');
+
+      infoDiv.style.display = 'block';
+      infoDiv.innerHTML = "<div id='spinner'></div><p>Loading business news for " + countryName + "...</p>";
+
+      // Call AI service and get business news
+      fetch('https://entreprelanglobeapp.vercel.app/api/news', {
+        method: 'POST',
+        body: JSON.stringify({ region: countryName }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        // Remove spinner
+        infoDiv.innerHTML = "";
+
+        // Display the AI-generated business news to the user
+        if (data.content) {
+          infoDiv.innerHTML = "<b>Business News for " + countryName + ":</b><br>" + data.content.replace(/\n/g, '<br>');
+        } else {
+          infoDiv.innerHTML = "<b>No business news found for " + countryName + ".</b>";
+        }
+      })
+      .catch(error => {
+        infoDiv.innerHTML = "<b>Error:</b> Could not load business news. Please try again later.";
+        console.error('Error fetching AI-generated business news:', error);
+      });
+    });
+
+    // Hide info box when not hovering
+    polygonSeries.mapPolygons.template.events.on("pointerout", function() {
+      var infoDiv = document.getElementById('info');
+      infoDiv.style.display = 'none';
+    });
+  }); // end am5.ready()
+  </script>
+
+  <!-- HTML -->
+  <div id="chartdiv">
+    <div id="info"></div>
+  </div>
+</body>
+</html>
