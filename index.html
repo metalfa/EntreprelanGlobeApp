@@ -45,6 +45,7 @@
   <script src="https://cdn.amcharts.com/lib/5/map.js"></script>
   <script src="https://cdn.amcharts.com/lib/5/geodata/worldLow.js"></script>
   <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
   <!-- Chart code -->
@@ -114,41 +115,38 @@
     // Add hover event to get AI-generated business news
     polygonSeries.mapPolygons.template.events.on("pointerover", function(ev) {
       var countryName = ev.target.dataItem.dataContext.name;
-      var infoDiv = document.getElementById('info');
+      var infoDiv = $('#info');
 
-      infoDiv.style.display = 'block';
-      infoDiv.innerHTML = "<div id='spinner'></div><p>Loading business news for " + countryName + "...</p>";
+      infoDiv.show();
+      infoDiv.html("<div id='spinner'></div><p>Loading business news for " + countryName + "...</p>");
 
       // Call AI service and get business news
-      fetch('/api/news', {
+      $.ajax({
+        url: '/api/news',
         method: 'POST',
-        body: JSON.stringify({ region: countryName }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        // Remove spinner
-        infoDiv.innerHTML = "";
+        contentType: 'application/json',
+        data: JSON.stringify({ region: countryName }),
+        success: function(data) {
+          // Remove spinner
+          infoDiv.html("");
 
-        // Display the AI-generated business news to the user
-        if (data.content) {
-          infoDiv.innerHTML = "<b>Business News for " + countryName + ":</b><br>" + data.content.replace(/\n/g, '<br>');
-        } else {
-          infoDiv.innerHTML = "<b>No business news found for " + countryName + ".</b>";
+          // Display the AI-generated business news to the user
+          if (data.content) {
+            infoDiv.html("<b>Business News for " + countryName + ":</b><br>" + data.content.replace(/\n/g, '<br>'));
+          } else {
+            infoDiv.html("<b>No business news found for " + countryName + ".</b>");
+          }
+        },
+        error: function(error) {
+          infoDiv.html("<b>Error:</b> Could not load business news. Please try again later.");
+          console.error('Error fetching AI-generated business news:', error);
         }
-      })
-      .catch(error => {
-        infoDiv.innerHTML = "<b>Error:</b> Could not load business news. Please try again later.";
-        console.error('Error fetching AI-generated business news:', error);
       });
     });
 
     // Hide info box when not hovering
     polygonSeries.mapPolygons.template.events.on("pointerout", function() {
-      var infoDiv = document.getElementById('info');
-      infoDiv.style.display = 'none';
+      $('#info').hide();
     });
   }); // end am5.ready()
   </script>
