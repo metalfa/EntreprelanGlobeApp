@@ -120,7 +120,7 @@
       infoDiv.innerHTML = "<div id='spinner'></div><p>Loading business news for " + countryName + "...</p>";
 
       // Call AI service and get business news
-      fetch('https://entreprelanglobeapp.vercel.app/api/news', {
+      fetch('/api/news', {
         method: 'POST',
         body: JSON.stringify({ region: countryName }),
         headers: {
